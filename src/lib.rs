@@ -161,14 +161,8 @@ fn expand_include_imagepalette(cx: &mut ExtCtxt,
         }
         Ok(..) => {
             let filename = format!("{}", file.display());
-
-            let name = match file.file_stem() {
-                Some(f) => format!("{:?}", f),
-                None => return DummyResult::expr(sp),
-            };
-
-            let name_b = match file.file_stem() {
-                Some(f) => format!("{:?}_palette", f),
+            let (name, name_b) = match file.file_stem() {
+                Some(f) => (format!("{:?}", f), format!("{:?}_palette", f)),
                 None => return DummyResult::expr(sp),
             };
 
