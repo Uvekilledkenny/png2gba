@@ -28,7 +28,7 @@ mod tests {
 
     #[test]
     fn data_palette_tile() {
-        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "#FF00FF", "t");
+        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "#FF00FF", "tile");
         assert_eq!(DATA_PALETTE_TILE, RESULT.0);
         assert_eq!(PALETTE_TILE, RESULT.1);
     }

@@ -46,6 +46,7 @@ fn expand_include_image(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<Ma
                     if s.to_string() == "tile" || s.to_string() == "t" {
                         true
                     } else {
+                        cx.span_err(sp, &format!("expected t or tile, found: {}", s));
                         return DummyResult::expr(sp);
                     }
                 }
@@ -63,7 +64,8 @@ fn expand_include_image(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<Ma
 
     match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Err(e) => {
-            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
+            cx.span_err(sp,
+                        &format!("couldn't read {}: {}", file.display(), e.to_string()));
             return DummyResult::expr(sp);
         }
         Ok(..) => {
@@ -117,13 +119,18 @@ fn expand_include_imagepalette(cx: &mut ExtCtxt,
                 None => return DummyResult::expr(sp),
                 Some((s, _style)) => {
                     let x = s.to_string();
-                    if !x.starts_with("#") {
+                    if !x.starts_with("#") || x.len() != 7 {
+                        cx.span_err(sp, &format!("wrong hexadecimal format: {}", x));
                         return DummyResult::expr(sp);
                     }
 
                     match u32::from_str_radix(&x[1..], 16) {
                         Ok(i) => i,
-                        Err(_) => return DummyResult::expr(sp),
+                        Err(e) => {
+                            cx.span_err(sp,
+                                        &format!("can't parse string to hexadecimal {}: {}", x, e));
+                            return DummyResult::expr(sp);
+                        }
                     }
                 }
             }
@@ -161,6 +168,7 @@ fn expand_include_imagepalette(cx: &mut ExtCtxt,
         }
         Ok(..) => {
             let filename = format!("{}", file.display());
+
             let (name, name_b) = match file.file_stem() {
                 Some(f) => (format!("{:?}", f), format!("{:?}_palette", f)),
                 None => return DummyResult::expr(sp),
@@ -171,7 +179,10 @@ fn expand_include_imagepalette(cx: &mut ExtCtxt,
 
             let (data, palette) = match to_data_palette(bytes.as_slice(), alpha, tile) {
                 Ok((e, f)) => (e, f),
-                Err(_) => return DummyResult::expr(sp),
+                Err(e) => {
+                    cx.span_err(sp, &format!("can't process file {}: {}", name, e));
+                    return DummyResult::expr(sp);
+                }
             };
 
             let mut token_trees_a = vec![];
