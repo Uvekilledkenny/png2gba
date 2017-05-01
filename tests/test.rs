@@ -12,7 +12,7 @@ mod tests {
         const RESULT: &[u16] = include_image!("test.png");
         assert_eq!(DATA_NOTILE, RESULT);
     }
-    
+
     #[test]
     fn data_tile() {
         const RESULT: &[u16] = include_image!("test.png", "t");
@@ -21,14 +21,14 @@ mod tests {
 
     #[test]
     fn data_palette_notile() {
-        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "0xff00ff");
+        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "#FF00FF");
         assert_eq!(DATA_PALETTE_NOTILE, RESULT.0);
         assert_eq!(PALETTE_NOTILE, RESULT.1);
     }
-    
+
     #[test]
     fn data_palette_tile() {
-        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "0xff00ff", "t");
+        const RESULT: (&[u8], &[u16]) = include_image_palette!("test.png", "#FF00FF", "t");
         assert_eq!(DATA_PALETTE_TILE, RESULT.0);
         assert_eq!(PALETTE_TILE, RESULT.1);
     }
