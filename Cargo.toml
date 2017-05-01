@@ -1,0 +1,10 @@
+[package]
+name = "png2gba"
+version = "0.1.0"
+authors = ["uvekilledkenny <dimitri.tavan@gmail.com>"]
+
+[dependencies]
+image = "*"
+
+[lib]
+plugin = true

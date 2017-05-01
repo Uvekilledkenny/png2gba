@@ -1,0 +1,7 @@
+https://github.com/rust-lang/rust/blob/master/src/libsyntax/ext/source_util.rs#L173
+https://github.com/rust-lang/rust/blob/master/src/libsyntax_ext/format.rs
+https://github.com/rust-lang/rust/blob/master/src/libsyntax/test.rs
+https://manishearth.github.io/rust-internals-docs/syntax/ast/struct.Expr.html
+https://doc.rust-lang.org/1.1.0/syntax/ext/base/struct.ExtCtxt.html
+https://github.com/rust-lang/rust/blob/master/src/libsyntax/ast.rs
+https://github.com/rust-lang/rust/blob/master/src/libsyntax_ext/env.rs
