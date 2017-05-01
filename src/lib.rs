@@ -16,6 +16,7 @@ use syntax::ast;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::u32;
 
 use process::*;
 
@@ -108,6 +109,140 @@ fn expand_include_image(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<Ma
     }
 }
 
+fn expand_include_imagepalette(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
+    let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
+        Some(ref exprs) if exprs.is_empty() => {
+            cx.span_err(sp, "include_image_palette! takes 1 or 2 arguments");
+            return DummyResult::expr(sp);
+        }
+        None => return DummyResult::expr(sp),
+        Some(exprs) => exprs.into_iter(),
+    };
+
+   let var = match expr_to_string(cx, exprs.next().unwrap(), "expected string literal") {
+        None => return DummyResult::expr(sp),
+        Some((v, _style)) => v.to_string(),
+    };
+
+    let alpha = match exprs.next() {
+        None => return DummyResult::expr(sp),
+        Some(second) => {
+            match expr_to_string(cx, second, "expected string literal") {
+                None => return DummyResult::expr(sp),
+                Some((s, _style)) => {
+                    match u32::from_str_radix(&s.to_string()[2..], 16) {
+                        Ok(i) => i,
+                        Err(_) => return DummyResult::expr(sp)
+                    }
+                },
+            }
+        }
+    };
+
+    let tile = match exprs.next() {
+        None => false,
+        Some(second) => {
+            match expr_to_string(cx, second, "expected string literal") {
+                None => return DummyResult::expr(sp),
+                Some((s, _style)) => {
+                    if  s.to_string() == "tile" || 
+                        s.to_string() == "t" {
+                        true
+                    } else {
+                        return DummyResult::expr(sp)
+                    }
+                },
+            }
+        }
+    };
+
+    if let Some(_) = exprs.next() {
+        cx.span_err(sp, "include_image_palette! takes 1 or 2 arguments");
+        return DummyResult::expr(sp);
+    }
+
+    let file = res_rel_file(cx, sp, Path::new(&var));
+    let mut bytes = Vec::new();
+
+    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
+        Err(e) => {
+            cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
+            return DummyResult::expr(sp);
+        }
+        Ok(..) => {
+            let filename = format!("{}", file.display());
+
+            let name = match file.file_stem() {
+                Some(f) => format!("{:?}", f),
+                None => return DummyResult::expr(sp),
+            };
+
+            cx.codemap()
+                .new_filemap_and_lines(&filename, file.to_str(), "");
+
+            let (data, palette) = match to_data_palette(bytes.as_slice(), alpha, tile) {
+                Ok((e,f)) => (e,f),
+                Err(_) => return DummyResult::expr(sp)
+            };
+
+            let mut token_trees_a = vec![];
+            let mut token_trees_b = vec![];
+
+            for i in data.clone() {
+                token_trees_a.push(quote_expr!(cx, $i));
+            }
+
+            for i in palette.clone() {
+                token_trees_b.push(quote_expr!(cx, $i));
+            }
+
+            let vec = cx.expr_vec_slice(sp, token_trees_a.clone());
+            let vec_b = cx.expr_vec_slice(sp, token_trees_b.clone());
+
+            let length = token_trees_a.len();
+            let length_b = token_trees_b.len();
+            
+            let ty = cx.ty_rptr(sp,
+                                cx.ty(sp,
+                                      ast::TyKind::Array(quote_ty!(cx, u8),
+                                                         quote_expr!(cx, $length))),
+                                Some(cx.lifetime(sp, keywords::StaticLifetime.name())),
+                                ast::Mutability::Immutable);
+            let st = ast::ItemKind::Const(ty, vec);
+            let name = cx.ident_of(&name.to_uppercase());
+            let item = cx.item(sp, name, vec![], st);
+            let stmt = ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                node: ast::StmtKind::Item(item),
+                span: sp,
+            };
+            let a = cx.expr_block(cx.block(sp,
+                                                  vec![stmt,
+                                                       cx.stmt_expr(cx.expr_ident(sp, name))]));
+
+            let ty_b = cx.ty_rptr(sp,
+                                cx.ty(sp,
+                                      ast::TyKind::Array(quote_ty!(cx, u16),
+                                                         quote_expr!(cx, $length_b))),
+                                Some(cx.lifetime(sp, keywords::StaticLifetime.name())),
+                                ast::Mutability::Immutable);
+            let st_b = ast::ItemKind::Const(ty_b, vec_b);
+            let item_b = cx.item(sp, name, vec![], st_b);
+            let stmt_b = ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                node: ast::StmtKind::Item(item_b),
+                span: sp,
+            };
+
+            let b = cx.expr_block(cx.block(sp,
+                                                  vec![stmt_b,
+                                                       cx.stmt_expr(cx.expr_ident(sp, name))]));
+
+            MacEager::expr(cx.expr_tuple(sp, vec![a,b]))
+        }
+    }
+}
+
 fn res_rel_file(cx: &mut ExtCtxt, sp: Span, arg: &Path) -> PathBuf {
     if !arg.is_absolute() {
         let callsite = sp.source_callsite();
@@ -123,4 +258,5 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: Span, arg: &Path) -> PathBuf {
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("include_image", expand_include_image);
+    reg.register_macro("include_image_palette", expand_include_imagepalette);
 }
