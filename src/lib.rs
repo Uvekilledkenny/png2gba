@@ -77,7 +77,7 @@ fn expand_include_image(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<Ma
             };
 
             cx.codemap()
-                .new_filemap_and_lines(&filename, file.to_str(), "");
+                .new_filemap_and_lines(&filename, "");
 
             let data = to_data(bytes.as_slice(), tile);
             let mut token_trees = vec![];
@@ -175,7 +175,7 @@ fn expand_include_imagepalette(cx: &mut ExtCtxt,
             };
 
             cx.codemap()
-                .new_filemap_and_lines(&filename, file.to_str(), "");
+                .new_filemap_and_lines(&filename, "");
 
             let (data, palette) = match to_data_palette(bytes.as_slice(), alpha, tile) {
                 Ok((e, f)) => (e, f),
